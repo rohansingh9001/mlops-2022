@@ -8,6 +8,7 @@ max_features = 500
 max_depth = 50
 max_leaf_nodes = 1200
 
+## Performance Comparison
 
 |run      | svm         | decision_tree|
 |---------|-------------|--------------|
