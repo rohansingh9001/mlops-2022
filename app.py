@@ -1,16 +1,18 @@
-import argparse
+import flask
+from flask import Flask, jsonify, request
+# import argparse
 import matplotlib.pyplot as plt
 import joblib
 from sklearn import datasets, svm, metrics
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 
-parser = argparse.ArgumentParser()
+#parser = argparse.ArgumentParser()
 
-parser.add_argument("-cn", "--clf_name", help="Name of model, supported - svm or tree.")
-parser.add_argument("-rs", "--random_state", help="Seed for the random number generator.")
+#parser.add_argument("-cn", "--clf_name", help="Name of model, supported - svm or tree.")
+#parser.add_argument("-rs", "--random_state", help="Seed for the random number generator.")
 
-args = parser.parse_args()
+#args = parser.parse_args()
 
 def get_train_test_split(ratio=0.2, seed=0):
 	digits = datasets.load_digits()
@@ -59,17 +61,21 @@ def test_model(model, data, args):
 
 	joblib.dump(model, model_path)
 
+app = Flask(__name__)
+
+@app.route('/', methods=['GET'])
+def home():
+	return "Machine Learning Prediction app"
+
+@app.route('/predict', methods=['POST'])
+def predict_image():
+	prediction = 1
+	return f"Prediction: {prediction}"
+
+@app.route('/', methods=['GET'])
+def best_model():
+	mode_name = "svm_gamma=0.001_C=1_random_state=0.joblib"
+        return "Best Model: {model_name}
+
 if __name__ == "__main__":
-	data = get_train_test_split(seed=int(args.random_state))
-	if args.clf_name == "svm":
-		model = train_svm(data)
-	elif args.clf_name == "tree":
-		model = train_tree(data)
-	else:
-		print("Please enter a valid model name using --clf_name flag")
-
-	test_model(model, data, args)
-
-
-
-
+	app.run(debug=True, host='0.0.0.0')
