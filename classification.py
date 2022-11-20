@@ -1,70 +1,75 @@
+import argparse
 import matplotlib.pyplot as plt
-
-# Import datasets, classifiers and performance metrics
+import joblib
 from sklearn import datasets, svm, metrics
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 
-digits = datasets.load_digits()
-print(digits.images.shape)
-_, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
-for ax, image, label in zip(axes, digits.images, digits.target):
-    ax.set_axis_off()
-    ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
-    ax.set_title("Training: %i" % label)
+parser = argparse.ArgumentParser()
 
-# flatten the images
-n_samples = len(digits.images)
-data = digits.images.reshape((n_samples, -1))
+parser.add_argument("-cn", "--clf_name", help="Name of model, supported - svm or tree.")
+parser.add_argument("-rs", "--random_state", help="Seed for the random number generator.")
 
-parameters = []
-accuracies = []
+args = parser.parse_args()
 
-for i in range(4):
-	for j in range(3):
-		parameters.append((0.0008 + 0.0001*i, 0.8 + 0.1*i))
-print("parameters:", parameters)
+def get_train_test_split(ratio=0.2, seed=0):
+	digits = datasets.load_digits()
+	# flatten the images
+	n_samples = len(digits.images)
+	data = digits.images.reshape((n_samples, -1))
+	return train_test_split(
+	    data, digits.target, test_size=ratio, shuffle=True, random_state=seed
+	)
 
-for parameter in parameters:
-	gamma, C = parameter
+
+def train_svm(data, gamma=0.001, C=1):
+	X_train, X_test, y_train, y_test = data
+
+
 	# Create a classifier: a support vector classifier
 	clf = svm.SVC(gamma=gamma, C=C)
-
-	# Split data into 50% train and 50% test subsets
-	X_train, X_test, y_train, y_test = train_test_split(
-	    data, digits.target, test_size=0.5, shuffle=False
-	)
 
 	# Learn the digits on the train subset
 	clf.fit(X_train, y_train)
 
-	# Predict the value of the digit on the test subset
-	predicted2 = clf.predict(X_test)
+	return clf
 
-	#_, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
-	#for ax, image, prediction in zip(axes, X_test, predicted):
-	#    ax.set_axis_off()
-	#    image = image.reshape(8, 8)
-	#    ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
-	#    ax.set_title(f"Prediction: {prediction}")
-	accuracy2 = metrics.accuracy_score(y_test, predicted2)
-	predicted1 = clf.predict(X_train)
-	accuracy1 = metrics.accuracy_score(y_train, predicted1)
-	accuracies.append((accuracy1, accuracy2))
+def train_tree(data):
+        X_train, X_test, y_train, y_test = data
 
-	# disp = metrics.ConfusionMatrixDisplay.from_predictions(y_test, predicted)
-	# disp.figure_.suptitle("Confusion Matrix")
-	# print(f"Confusion matrix:\n{disp.confusion_matrix}")
 
-	# plt.show()
-print("gamma    C    train_acc    test_acc")
-for parameter, accuracy in zip(parameters, accuracies):
-	gamma, C = parameter
-	train_acc, test_acc = accuracy
-	print("%.4f" % gamma, '|', "%.1f" % C, '|', "%.7f" % train_acc, '|', "%.6f" % test_acc)
+        # Create a classifier: a support vector classifier
+        clf = DecisionTreeClassifier(random_state=0)
 
-test_acc = [b for a, b in accuracies]
-test_acc.sort()
-print("max accuracy:", max(test_acc))
-print("min accuracy:", min(test_acc))
-print("mean accuracy:", sum(test_acc)/len(test_acc))
-print("median accuracy:", test_acc[len(test_acc)//2])
+        # Learn the digits on the train subset
+        clf.fit(X_train, y_train)
+
+        return clf
+
+def test_model(model, data, args):
+	_, X_test, __, y_test = data
+	print("Model Accuracy:", metrics.accuracy_score(y_test, model.predict(X_test)))
+
+	model_path = f'./models/{args.clf_name}_gamma=0.001_C=1_random_state={args.random_state}.joblib'
+
+	with open(f"results/{args.clf_name}_{args.random_state}.txt", "w") as file:
+		print("test accurancy:", metrics.accuracy_score(y_test, model.predict(X_test)), file=file)
+		print("test macro-f1:", metrics.f1_score(y_test, model.predict(X_test), average="macro"), file=file)
+		print(f"model saved at {model_path}", file=file)
+
+	joblib.dump(model, model_path)
+
+if __name__ == "__main__":
+	data = get_train_test_split(seed=int(args.random_state))
+	if args.clf_name == "svm":
+		model = train_svm(data)
+	elif args.clf_name == "tree":
+		model = train_tree(data)
+	else:
+		print("Please enter a valid model name using --clf_name flag")
+
+	test_model(model, data, args)
+
+
+
+
